@@ -22,7 +22,7 @@ function mpa_endpoint_content() {
 
     if (empty($token)) {
         echo '<p>' . __('Você ainda não sincronizou sua conta do Mercado Pago.', 'mpa') . '</p>';
-        echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=' . $client_id . '&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'">' . __('Sincronizar', 'mpa') . '</button>';
+        echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'">' . __('Sincronizar', 'mpa') . '</button>';
     } else {
         echo '<table>';
 
@@ -60,6 +60,13 @@ function mpa_endpoint_content() {
 
                 $subscription_info['status'] = esc_html($status_translation);
 
+                // Formate a data
+                $date_created = date_create_from_format('Y-m-d\TH:i:s.uP', $subscription_info['date_created']);
+                $subscription_info['date_created'] = $date_created->format('d/m/Y H:i') . 'h';
+
+                $next_payment_date = date_create_from_format('Y-m-d\TH:i:s.uP', $subscription_info['next_payment_date']);
+                $subscription_info['next_payment_date'] = $next_payment_date->format('d/m/Y H:i') . 'h';
+
                 foreach ($subscription_info as $key => $value) {
                     if (isset($translated_fields[$key])) {
                         echo '<tr>';
@@ -79,4 +86,5 @@ function mpa_endpoint_content() {
         echo '</table>';
     }
 }
+
 add_action('woocommerce_account_mpa_subscription_endpoint', 'mpa_endpoint_content');
