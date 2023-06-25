@@ -20,16 +20,15 @@ function mpa_endpoint_content() {
     $user_id = get_current_user_id();
     $token = get_user_meta($user_id, 'mpa_token', true);
     $subscription_id = get_user_meta($user_id, 'mpa_subscription_id', true);
+    $plan_name = get_user_meta($user_id, 'mpa_plan_name', true);
 
 if (empty($token)) {
-    echo '<p>' . __('Você ainda não sincronizou sua conta do Mercado Pago.', 'mpa') . '</p>';
+    echo '<table><tr><td>';
+	echo __('Você ainda não sincronizou sua conta do Mercado Pago', 'mpa');
+	echo '</td></tr></table>';
+    echo '<p>' . __('Clique em sincronizar para vincular sua conta.', 'mpa') . '</p>';
     echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 2px;">' . __('Sincronizar', 'mpa') . '</button>';
-} elseif (empty($subscription_id)) {
-    echo '<p>' . __('Você não tem uma assinatura ativa.', 'mpa') . '</p>';
-    echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 5px;">' . __('Sincronizar', 'mpa') . '</button>';
-    echo '<button onclick="window.open(\'https://www.mercadopago.com.br/subscriptions\', \'_blank\')" style="margin-left: 5px; padding: 15px 10px; background-color: #007bff; color: #fff; border: none; cursor: pointer;">' . __('Ver Assinaturas do MP', 'mpa') . '</button>';
-
-} else {
+}  {
     echo '<table>';
 
 
@@ -82,10 +81,14 @@ if (empty($token)) {
                 }
             }
 
-            // Botão para acessar as assinaturas no Mercado Pago
-            echo '<tr>';
-            echo '<td colspan="2"><a href="https://www.mercadopago.com.br/subscriptions" target="_blank" rel="noopener noreferrer" class="button">' . __('Ver Assinaturas do MP', 'mpa') . '</a></td>';
-            echo '</tr>';
+			// Botões para acessar as assinaturas no Mercado Pago e a ação do seu novo botão
+
+			echo '<button onclick="window.open(\'https://www.mercadopago.com.br/subscriptions\', \'_blank\')" style="margin-right: 5px; padding: 15px 10px; background-color: #007bff; color: #fff; border: none; cursor: pointer;">' . __('Ver Assinaturas do MP', 'mpa') . '</button>';
+			echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 2px;">' . __('Re-sincronizar', 'mpa') . '</button>';
+			echo '<br>';
+			echo '</br>';				
+
+
         }
 
         echo '</table>';

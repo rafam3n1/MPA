@@ -45,6 +45,15 @@ function mpa_add_custom_user_profile_fields($user) {
                 <span class="description"><?php _e('Por favor insira o status da assinatura.', 'mpa'); ?></span>
             </td>
         </tr>
+        <tr>
+    <th>
+        <label for="mpa_plan_name"><?php _e('Nome do Plano', 'mpa'); ?></label>
+    </th>
+    <td>
+        <input type="text" name="mpa_plan_name" id="mpa_plan_name" value="<?php echo esc_attr(get_the_author_meta('mpa_plan_name', $user->ID)); ?>" class="regular-text" /><br />
+        <span class="description"><?php _e('Por favor insira o nome do plano.', 'mpa'); ?></span>
+            </td>
+        </tr>
     </table>
     <?php
 }
@@ -61,6 +70,8 @@ function mpa_save_custom_user_profile_fields($user_id) {
     update_user_meta($user_id, 'mpa_token', $_POST['mpa_token']);
     update_user_meta($user_id, 'mpa_subscription_id', $_POST['mpa_subscription_id']);
     update_user_meta($user_id, 'mpa_status', $_POST['mpa_status']);
+    update_user_meta($user_id, 'mpa_plan_name', $_POST['mpa_plan_name']);
+
 }
 
 add_action('personal_options_update', 'mpa_save_custom_user_profile_fields');
@@ -90,34 +101,46 @@ function mpa_get_subscription_info($subscription_id, $token) {
 
     $body = wp_remote_retrieve_body($response);
     $data = json_decode($body, true);
-	
+    
     // Log the response
     error_log("Subscription info: " . print_r($data, true));
-	
+    
     return $data;
 }
 
 function mpa_update_subscription_status() {
-    error_log("Updating subscription status...");
+    error_log("Atualizando status da assinatura...");
     $user_id = get_current_user_id();
     $token = get_user_meta($user_id, 'mpa_token', true);
     $subscription_id = get_user_meta($user_id, 'mpa_subscription_id', true);
-
+    
     if (!empty($token) && !empty($subscription_id)) {
         $subscription_info = mpa_get_subscription_info($subscription_id, $token);
+        error_log("Informações da assinatura: " . print_r($subscription_info, true));
 
         if (!empty($subscription_info)) {
             $status = $subscription_info['status'];
             update_user_meta($user_id, 'mpa_status', $status);
+            
+            // Atualize o nome do plano aqui
+            $plan_name = $subscription_info['reason'];
+        update_user_meta($user_id, 'mpa_plan_name', $plan_name);
+        error_log("Nome do plano atualizado: " . get_user_meta($user_id, 'mpa_plan_name', true));
 
             // Log the status
-            error_log("Subscription status: " . $status);
+            error_log("Status da assinatura: " . $status);
 
             // The membership plan ID
-            $plan_id = 6570;
+            $plan_id = 9512;
 
             // Get the user's membership
             $membership = wc_memberships_get_user_membership($user_id, $plan_id);
+
+            if ($membership) {
+                error_log("Associação encontrada: " . print_r($membership, true));
+            } else {
+                error_log("Nenhuma associação encontrada para o usuário: " . $user_id);
+            }
 
             if ($status == 'authorized') {
                 if (!$membership) {
@@ -127,25 +150,44 @@ function mpa_update_subscription_status() {
                         'user_id' => $user_id,
                     ));
 
-                    // Log the membership creation
-                    error_log("Membership created: " . print_r($membership, true));
+                    // Check for errors
+                    if (is_wp_error($membership)) {
+                        error_log('Error creating membership: ' . $membership->get_error_message());
+                    } else {
+                        // Log the membership creation
+                        error_log("Associação criada: " . print_r($membership, true));
+                    }
+                } else {
+                    // If the membership is not active, activate it
+                    if ($membership->get_status() != 'active') {
+                        $membership->update_status('active');
+                        error_log("Associação ativada: " . $membership->get_id());
+                    }
                 }
 
                 // Update the membership's end date
                 $next_payment_date = $subscription_info['next_payment_date'];
                 $membership->set_end_date($next_payment_date);
+                error_log("Data de término da associação atualizada: " . $next_payment_date);
             } else if ($status == 'paused' || $status == 'cancelled') {
-                if ($membership) {
-                    // Pause or cancel the user's membership
-                    $membership->update_status($status == 'paused' ? 'paused' : 'cancelled');
+    if ($membership) {
+        // Pause or cancel the user's membership
+        $result = $membership->update_status($status == 'paused' ? 'cancelled' : 'cancelled');
 
-                    // Log the membership update
-                    error_log("Membership updated: " . $membership->get_id());
-                }
-            }
-        }
+        // Log the membership update
+        error_log("Associação atualizada: " . $membership->get_id() . ", resultado: " . ($result ? 'sucesso' : 'falha'));
     }
 }
+
+        } else {
+            error_log("Não foi possível obter informações da assinatura para o usuário: " . $user_id);
+        }
+    } else {
+        error_log("Token ou ID de assinatura não fornecidos para o usuário: " . $user_id);
+    }
+}
+
+
 
 function mpa_shortcode() {
     ob_start();
@@ -156,3 +198,4 @@ function mpa_shortcode() {
 }
 
 add_shortcode('mpa_update_status', 'mpa_shortcode');
+?>
