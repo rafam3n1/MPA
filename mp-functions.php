@@ -83,12 +83,76 @@ function mpa_get_subscription_info($subscription_id, $token) {
     $response = wp_remote_get($url);
 
     if (is_wp_error($response)) {
-        // Trate o erro aqui...
+        // Log the error
+        error_log("Error getting subscription info: " . $response->get_error_message());
         return null;
     }
 
     $body = wp_remote_retrieve_body($response);
     $data = json_decode($body, true);
-
+	
+    // Log the response
+    error_log("Subscription info: " . print_r($data, true));
+	
     return $data;
 }
+
+function mpa_update_subscription_status() {
+    error_log("Updating subscription status...");
+    $user_id = get_current_user_id();
+    $token = get_user_meta($user_id, 'mpa_token', true);
+    $subscription_id = get_user_meta($user_id, 'mpa_subscription_id', true);
+
+    if (!empty($token) && !empty($subscription_id)) {
+        $subscription_info = mpa_get_subscription_info($subscription_id, $token);
+
+        if (!empty($subscription_info)) {
+            $status = $subscription_info['status'];
+            update_user_meta($user_id, 'mpa_status', $status);
+
+            // Log the status
+            error_log("Subscription status: " . $status);
+
+            // The membership plan ID
+            $plan_id = 6570;
+
+            // Get the user's membership
+            $membership = wc_memberships_get_user_membership($user_id, $plan_id);
+
+            if ($status == 'authorized') {
+                if (!$membership) {
+                    // Add the user to the membership plan
+                    $membership = wc_memberships_create_user_membership(array(
+                        'plan_id' => $plan_id,
+                        'user_id' => $user_id,
+                    ));
+
+                    // Log the membership creation
+                    error_log("Membership created: " . print_r($membership, true));
+                }
+
+                // Update the membership's end date
+                $next_payment_date = $subscription_info['next_payment_date'];
+                $membership->set_end_date($next_payment_date);
+            } else if ($status == 'paused' || $status == 'cancelled') {
+                if ($membership) {
+                    // Pause or cancel the user's membership
+                    $membership->update_status($status == 'paused' ? 'paused' : 'cancelled');
+
+                    // Log the membership update
+                    error_log("Membership updated: " . $membership->get_id());
+                }
+            }
+        }
+    }
+}
+
+function mpa_shortcode() {
+    ob_start();
+
+    mpa_update_subscription_status();
+
+    return ob_get_clean();
+}
+
+add_shortcode('mpa_update_status', 'mpa_shortcode');
