@@ -22,19 +22,34 @@ function mpa_endpoint_content() {
     $subscription_id = get_user_meta($user_id, 'mpa_subscription_id', true);
     $plan_name = get_user_meta($user_id, 'mpa_plan_name', true);
 
-if (empty($token)) {
-    echo '<table><tr><td>';
-	echo __('Você ainda não sincronizou sua conta do Mercado Pago', 'mpa');
-	echo '</td></tr></table>';
-    echo '<p>' . __('Clique em sincronizar para vincular sua conta.', 'mpa') . '</p>';
-    echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 2px;">' . __('Sincronizar', 'mpa') . '</button>';
-}  {
-    echo '<table>';
-
-
+    if (empty($token)) {
+        echo '<table><tr><td>';
+        echo __('Você ainda não sincronizou sua conta do Mercado Pago', 'mpa');
+        echo '</td></tr></table>';
+        echo '<p>' . __('Clique em sincronizar para vincular sua conta.', 'mpa') . '</p>';
+        echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 5px;">' . __('Sincronizar', 'mpa') . '</button>';
+        echo '<button onclick="window.open(\'https://www.mercadopago.com.br/subscriptions\', \'_blank\')" style="margin-right: 5px; padding: 15px 10px; background-color: #007bff; color: #fff; border: none; cursor: pointer;">' . __('Ver Assinaturas do MP', 'mpa') . '</button>';
+    } else {
         $subscription_info = mpa_get_subscription_info($subscription_id, $token);
 
         if (!empty($subscription_info)) {
+
+            // Insira as informações da assinatura no banco de dados
+            $result = mpa_insert_into_db($user_id, $subscription_info);
+
+            if (is_wp_error($result)) {
+                // $result é um erro, exiba a mensagem de erro para o usuário e interrompa a execução do código
+                echo '<p style="color: red;">' . $result->get_error_message() . '</p>';
+
+                    // Se a mensagem de erro for "Assinatura já vinculada a outra conta", exiba o botão "Re-sincronizar"
+    if ($result->get_error_message() == 'Assinatura já vinculada a outra conta.') {
+        echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 2px;">' . __('Re-sincronizar', 'mpa') . '</button>';
+    }
+                return;
+            }
+
+            echo '<table>';
+
             $translated_fields = array(
                 'id' => __('ID', 'mpa'),
                 'payer_id' => __('Payer ID', 'mpa'),
@@ -65,33 +80,45 @@ if (empty($token)) {
 
             $subscription_info['status'] = esc_html($status_translation);
 
-            // Formate a data
-            $date_created = date_create_from_format('Y-m-d\TH:i:s.uP', $subscription_info['date_created']);
-            $subscription_info['date_created'] = $date_created->format('d/m/Y H:i') . 'h';
-
-            $next_payment_date = date_create_from_format('Y-m-d\TH:i:s.uP', $subscription_info['next_payment_date']);
-            $subscription_info['next_payment_date'] = $next_payment_date->format('d/m/Y H:i') . 'h';
-
-            foreach ($subscription_info as $key => $value) {
-                if (isset($translated_fields[$key])) {
-                    echo '<tr>';
-                    echo '<th>' . esc_html($translated_fields[$key]) . '</th>';
-                    echo '<td>' . esc_html($value) . '</td>';
-                    echo '</tr>';
+            // Verifique se o índice 'date_created' está definido
+            if (isset($subscription_info['date_created'])) {
+                // Formate a data
+                $date_created = date_create_from_format('Y-m-d\TH:i:s.uP', $subscription_info['date_created']);
+                if ($date_created instanceof DateTime) {
+                    $subscription_info['date_created'] = $date_created->format('d/m/Y H:i') . 'h';
                 }
             }
 
-			// Botões para acessar as assinaturas no Mercado Pago e a ação do seu novo botão
 
-			echo '<button onclick="window.open(\'https://www.mercadopago.com.br/subscriptions\', \'_blank\')" style="margin-right: 5px; padding: 15px 10px; background-color: #007bff; color: #fff; border: none; cursor: pointer;">' . __('Ver Assinaturas do MP', 'mpa') . '</button>';
-			echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 2px;">' . __('Re-sincronizar', 'mpa') . '</button>';
-			echo '<br>';
-			echo '</br>';				
+            // Verifique se o índice 'next_payment_date' está definido
+            if (isset($subscription_info['next_payment_date'])) {
+                // Formate a data
+                $next_payment_date = date_create_from_format('Y-m-d\TH:i:s.uP', $subscription_info['next_payment_date']);
+                if ($next_payment_date instanceof DateTime) {
+                    $subscription_info['next_payment_date'] = $next_payment_date->format('d/m/Y H:i') . 'h';
+                }
+            }
 
+            // Verifique se o índice 'id' está definido
+            if (isset($subscription_info['id'])) {
+                foreach ($subscription_info as $key => $value) {
+                    if (isset($translated_fields[$key])) {
+                        echo '<tr>';
+                        echo '<th>' . esc_html($translated_fields[$key]) . '</th>';
+                        echo '<td>' . esc_html($value) . '</td>';
+                        echo '</tr>';
+                    }
+                }
 
+                // Botões para acessar as assinaturas no Mercado Pago e a ação do seu novo botão
+                echo '<button onclick="window.open(\'https://www.mercadopago.com.br/subscriptions\', \'_blank\')" style="margin-right: 5px; padding: 15px 10px; background-color: #007bff; color: #fff; border: none; cursor: pointer;">' . __('Ver Assinaturas do MP', 'mpa') . '</button>';
+                echo '<button onclick="window.location.href=\'https://auth.mercadopago.com.br/authorization?client_id=4002491191110026&response_type=code&platform_id=mp&redirect_uri=' . $redirect_uri . '\'" style="margin-right: 2px;">' . __('Re-sincronizar', 'mpa') . '</button>';
+                echo '<br>';
+                echo '</br>';				
+            }
+
+            echo '</table>';
         }
-
-        echo '</table>';
     }
 }
 
