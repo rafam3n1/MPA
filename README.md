@@ -1,5 +1,5 @@
 # MPA
- Mercado Pago Assinaturas
+ ## Mercado Pago Assinaturas
 
  Plugin para integrar assinaturas do Mercado Pago com o WooCommerce
 
