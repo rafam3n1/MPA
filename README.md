@@ -22,6 +22,6 @@
 
  Sobre as atualizações de status, é feito sempre que um shortcode é carregado, esse shortcode eu deixo nas minhas paginas bloqueadas pela 'membership' dessa forma sempre quando um cliente tenta entrar nas paginas é feita uma nova consulta sobre o status da assinatura dele.
 
- ###
+ ### Conclusão
  Não sou dev expert e foi o que consegui fazer até então, estou postando o plugin para que se alguem tiver interesse de contribuir com a finalização do plugin é bem-vindo. 
  Mas acredito que faria mais sentido um plugin que vincula essa nova funcionalidade do MP diretamente com o Wocommerce Subscription ou o plugin oficial de gateway do MP.
